@@ -60,11 +60,17 @@ public class LotteryServiceImpl extends ServiceImpl<LotteryMapper, Lottery> impl
             //判断活动有效性
             Lottery lottery = checkLottery(drawDto);
             //发布事件，用来加载指定活动的奖品信息
+            /**
+             * 不一定用时间监听来做，反而比较麻烦，同步亦可
+             */
             applicationContext.publishEvent(new InitPrizeToRedisEvent(this, lottery.getId(), countDownLatch));
+            /**
+             * 这里应该放在抽奖之前
+             */
+            countDownLatch.await(); //等待奖品初始化完成
             //开始抽奖
             lotteryItem = doPlay(lottery);
             //记录奖品并扣减库存
-            countDownLatch.await(); //等待奖品初始化完成
             String key = RedisKeyManager.getLotteryPrizeRedisKey(lottery.getId(), lotteryItem.getPrizeId());
             int prizeType = Integer.parseInt(redisTemplate.opsForHash().get(key, "prizeType").toString());
             context.setLottery(lottery);
